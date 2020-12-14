@@ -90,29 +90,42 @@ public class Reflector {
     resolveGetterConflicts(conflictingGetters);
   }
 
+  /**
+   * 解决get方法冲突，最终一个属性，只保留一个对应的方法
+   * @param conflictingGetters
+   */
   private void resolveGetterConflicts(Map<String, List<Method>> conflictingGetters) {
+    //遍历每个属性，查找最匹配的方法。因为子类可以覆写父类的方法，所以一个属性，可能对应多个getting方法
     for (Entry<String, List<Method>> entry : conflictingGetters.entrySet()) {
+      //最匹配的方法
       Method winner = null;
       String propName = entry.getKey();
       boolean isAmbiguous = false;
       for (Method candidate : entry.getValue()) {
+        //winner为空，说明candidate为最匹配的方法
         if (winner == null) {
           winner = candidate;
           continue;
         }
+        //基于返回类型比较
         Class<?> winnerType = winner.getReturnType();
         Class<?> candidateType = candidate.getReturnType();
         if (candidateType.equals(winnerType)) {
+          //返回值不是boolean的非is方法则报错，因为在getClassMethod中已经去重
           if (!boolean.class.equals(candidateType)) {
             isAmbiguous = true;
             break;
+          //选择boolean类型的is方法
           } else if (candidate.getName().startsWith("is")) {
             winner = candidate;
           }
+        //不符合则选择子类
         } else if (candidateType.isAssignableFrom(winnerType)) {
           // OK getter type is descendant
+        //符合选择子类。因为子类可以修改放大返回值。例如，父类的一个方法的返回值为 List ，子类对该方法的返回值可以覆写为 ArrayList 。
         } else if (winnerType.isAssignableFrom(candidateType)) {
           winner = candidate;
+        //否则返回类型冲突
         } else {
           isAmbiguous = true;
           break;
@@ -148,6 +161,10 @@ public class Reflector {
     }
   }
 
+  /**
+   * 解决setter冲突
+   * @param conflictingSetters
+   */
   private void resolveSetterConflicts(Map<String, List<Method>> conflictingSetters) {
     for (Entry<String, List<Method>> entry : conflictingSetters.entrySet()) {
       String propName = entry.getKey();
@@ -157,6 +174,7 @@ public class Reflector {
       boolean isSetterAmbiguous = false;
       Method match = null;
       for (Method setter : setters) {
+        //和getType相同，直接使用
         if (!isGetterAmbiguous && setter.getParameterTypes()[0].equals(getterType)) {
           // should be the best match
           match = setter;
@@ -203,15 +221,19 @@ public class Reflector {
 
   private Class<?> typeToClass(Type src) {
     Class<?> result = null;
+    //普通类型，直接使用类
     if (src instanceof Class) {
       result = (Class<?>) src;
+    //泛型类型，使用泛型
     } else if (src instanceof ParameterizedType) {
       result = (Class<?>) ((ParameterizedType) src).getRawType();
+    //泛型数组，获得具体类
     } else if (src instanceof GenericArrayType) {
       Type componentType = ((GenericArrayType) src).getGenericComponentType();
-      if (componentType instanceof Class) {
+      if (componentType instanceof Class) {//普通类型
         result = Array.newInstance((Class<?>) componentType, 0).getClass();
       } else {
+        //递归该方法，返回类
         Class<?> componentClass = typeToClass(componentType);
         result = Array.newInstance(componentClass, 0).getClass();
       }
@@ -300,6 +322,7 @@ public class Reflector {
         // check to see if the method is already known
         // if it is known, then an extended class must have
         // overridden a method
+        //在这里去重了子父类方法
         if (!uniqueMethods.containsKey(signature)) {
           uniqueMethods.put(signature, currentMethod);
         }

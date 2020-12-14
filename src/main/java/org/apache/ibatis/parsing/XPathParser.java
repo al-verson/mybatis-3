@@ -141,9 +141,13 @@ public class XPathParser {
   }
 
   public String evalString(Object root, String expression) {
+
+    //获得值
     String result = (String) evaluate(expression, root, XPathConstants.STRING);
+    //基于variables替换动态值，如果result为动态值
     result = PropertyParser.parse(result, variables);
     return result;
+
   }
 
   public Boolean evalBoolean(String expression) {
@@ -199,7 +203,9 @@ public class XPathParser {
   }
 
   public List<XNode> evalNodes(Object root, String expression) {
+    //获得数组
     List<XNode> xnodes = new ArrayList<>();
+    //封装成XNode数组
     NodeList nodes = (NodeList) evaluate(expression, root, XPathConstants.NODESET);
     for (int i = 0; i < nodes.getLength(); i++) {
       xnodes.add(new XNode(this, nodes.item(i), variables));
@@ -241,7 +247,7 @@ public class XPathParser {
       factory.setExpandEntityReferences(true);
 
       DocumentBuilder builder = factory.newDocumentBuilder();
-      builder.setEntityResolver(entityResolver);
+      builder.setEntityResolver(entityResolver);//设置实体解析器
       builder.setErrorHandler(new ErrorHandler() {
         @Override
         public void error(SAXParseException exception) throws SAXException {
@@ -258,6 +264,7 @@ public class XPathParser {
           // NOP
         }
       });
+      //解析xml文件
       return builder.parse(inputSource);
     } catch (Exception e) {
       throw new BuilderException("Error creating document instance.  Cause: " + e, e);

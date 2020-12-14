@@ -17,6 +17,7 @@ package org.apache.ibatis.parsing;
 
 /**
  * @author Clinton Begin
+ * @Description 通用token解析器
  */
 public class GenericTokenParser {
 
@@ -35,17 +36,21 @@ public class GenericTokenParser {
       return "";
     }
     // search open token
+    //寻找开始的openToken位置
     int start = text.indexOf(openToken);
     if (start == -1) {
       return text;
     }
     char[] src = text.toCharArray();
+    //起始查找位置
     int offset = 0;
     final StringBuilder builder = new StringBuilder();
     StringBuilder expression = null;
     do {
       if (start > 0 && src[start - 1] == '\\') {
         // this open token is escaped. remove the backslash and continue.
+        // 因为token的前一个位置是\转义字符，所以忽略\
+        // 添加[offset, start - offset - 1] 和 openToken内容到builder中
         builder.append(src, offset, start - offset - 1).append(openToken);
         offset = start + openToken.length();
       } else {
@@ -74,6 +79,7 @@ public class GenericTokenParser {
           builder.append(src, start, src.length - start);
           offset = src.length;
         } else {
+          //调用TokenHandler.handleToken
           builder.append(handler.handleToken(expression.toString()));
           offset = end + closeToken.length();
         }
